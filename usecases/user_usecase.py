@@ -5,6 +5,7 @@ from flask import request
 secret_key = "secret108"
 sys.path.append('/home/pawan/PycharmProjects/StudentApp')
 from data_providers.db_operations import connect_database
+from data_providers.db_operations import disconnect_database
 
 
 # user registration
@@ -13,8 +14,7 @@ def valid_user(username, password):
     select_valid_user = "SELECT * FROM users WHERE username = %s"
     cur.execute(select_valid_user, (username,))
     row = cur.fetchone()
-    cur.close()
-    con.close()
+    disconnect_database(cur, con)
 
     if row:
         # if username is matching the authenticate password
@@ -52,7 +52,5 @@ def register(data):
     values = (data['username'], hashed_string_password, data['email'], data['role'])
 
     cur.execute(insert_user, values)
-    con.commit()
-    cur.close()
-    con.close()
+    disconnect_database(cur, con)
     return {"message": "user added successfully"}, 201
