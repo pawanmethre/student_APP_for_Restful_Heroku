@@ -9,14 +9,12 @@ from usecases.user_usecase import signin, register
 # registering new user 
 class UserRegister(Resource):
     def post(self):
-        data = request.get_json()
-        res = register(data)
+        res = register()
         return res
 
 
 # signing in existing user
 class SignIn(Resource):
     def get(self):
-        data = request.get_json()
-        res = signin(data)
+        res = signin()
         return res

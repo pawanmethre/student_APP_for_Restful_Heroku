@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_restful import Resource, Api
+from flask_restful import Api
 import sys
 sys.path.append('/home/pawan/PycharmProjects/StudentApp')
 from entities.student_entity import Student, Students

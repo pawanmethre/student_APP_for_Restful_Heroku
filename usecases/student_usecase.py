@@ -1,98 +1,89 @@
-import jwt
 import sys
 from flask import request
-secret_key = "secret108"
+from flask_restful import reqparse
 sys.path.append('/home/pawan/PycharmProjects/StudentApp')
-from data_providers.db_operations import connect_database
-from data_providers.db_operations import disconnect_database
+from data_providers.db_operations import fetch_studentName_db, add_student_db, delete_student_db, update_student_db, fetch_allStudents_db
+from usecases.auth_usecase import jwt_required
 
 
+def get_student():
+    token = request.headers.get('Authorization')
+    jwt_response = jwt_required(token)
 
-# authenticating wether the user is valid or not by accessing user from jwt token
-def jwt_required(token):
-    payload = jwt.decode(token, secret_key, algorithm='HS256')
-    cur, con = connect_database('student')
-    verify_user = "SELECT * FROM users WHERE username=%s"
-    cur.execute(verify_user, payload['username'])
-    row = cur.fetchone()
-    disconnect_database(cur, con)
-    return row
+    if (type( jwt_response) is tuple):
 
+        parser = reqparse.RequestParser(bundle_errors=True)
+        parser.add_argument("rollno", type=int, required=True, help="student roll no required to fetch the details")
+        args = parser.parse_args()
+        res = fetch_studentName_db(args['rollno'])
 
-def get_student(token, data):
-
-    jwt = jwt_required(token)
-    if (jwt):
-
-        cur, con = connect_database('student')
-        insert_stud = "SELECT * FROM students WHERE rollno=%s"
-        values = (data['rollno'],)
-        cur.execute(insert_stud,values)
-        row = cur.fetchone()
-        disconnect_database(cur, con)
-        if(row):
-            return {"rollno":row[0], "name":row[1], "age":row[2], "branch":row[3]},200
-        else:
-            return  {"message":"rollno doesnt exists"},404
+        return res
     else:
-        return {"message":"invalid signature"},401
+        return {"authentication": jwt_response}, 401
 
 
-def add_student(token, data):
-    jwt = jwt_required(token)
-    if (jwt):
-        data = request.get_json()
-        cur, con = connect_database('student')
-        insert_stud = "INSERT INTO students(rollno, name, age, branch) VALUES(%s,%s, %s,%s)"
-        values = (data['rollno'], data['name'], data['age'], data['branch'])
-        cur.execute(insert_stud, values)
-        disconnect_database(cur, con)
-        return {"message": "student added successfully"}, 201
+def add_student():
+    token = request.headers.get('Authorization')
+    jwt_response = jwt_required(token)
+
+    if (type( jwt_response) is tuple):
+
+        parser = reqparse.RequestParser(bundle_errors=True)
+        parser.add_argument("rollno", type=int, required=True, help="student Roll No required to add the details into DB")
+        parser.add_argument("name", type=str, required=True, help="student name required to add the details into DB")
+        parser.add_argument("age", type=int, required=True, help="student age required to add the details into DB")
+        parser.add_argument("branch", type=str, required=True, help="student branch required to add the details into DB")
+        args = parser.parse_args()
+
+        res = add_student_db((args['rollno'], args['name'], args['age'], args['branch']))
+        return res
     else:
-        return {"message": "authentication failed"}, 401
+        return {"authentication": jwt_response}, 401
 
 
-def delete_student(token, data):
-    jwt = jwt_required(token)
-    if (jwt):
-        data = request.get_json()
-        cur, con = connect_database('student')
-        insert_stud = "DELETE FROM students WHERE rollno=%s"
-        values = (data['rollno'],)
-        cur.execute(insert_stud, values)
-        disconnect_database(cur, con)
-        return {"message": "student deleted successfully"}, 200
+def delete_student():
+    token = request.headers.get('Authorization')
+    jwt_response = jwt_required(token)
+
+    if (type( jwt_response) is tuple):
+
+        parser = reqparse.RequestParser(bundle_errors=True)
+        parser.add_argument("rollno", type=int, required=True, help="student Roll No required to delete the info")
+        args = parser.parse_args()
+
+        res = delete_student_db((args['rollno'],))
+        return res
     else:
-        return {"message": "invalid signature"}, 401
+        return {"authentication": jwt_response}, 401
 
 
-def update_student(token, data):
-    jwt = jwt_required(token)
-    if (jwt):
-        data = request.get_json()
-        cur, con = connect_database('student')
-        insert_stud = "UPDATE students SET branch=%s WHERE rollno=%s"
-        values = (data['branch'], data['rollno'])
-        cur.execute(insert_stud, values)
-        disconnect_database(cur, con)
-        return {"message": "student branch updated successfully"}, 200
+def update_student():
+    token = request.headers.get('Authorization')
+    jwt_response = jwt_required(token)
+
+    if (type( jwt_response) is tuple):
+
+        parser = reqparse.RequestParser(bundle_errors=True)
+        parser.add_argument("rollno", type=int, required=True, help="Roll No required")
+        parser.add_argument("branch", type=str, required=True, help="branch required")
+        args = parser.parse_args()
+
+        res = update_student_db((args['branch'], args['rollno']))
+        return res
     else:
-        return {"message": "invalid signature"}, 401
+        return {"authentication": jwt_response}, 401
 
+def get_students():
 
-def get_students(token):
-    jwt = jwt_required(token)
-    if (jwt):
-        l = []
-        cur, con = connect_database('student')
-        select_student = "SELECT * FROM students"
-        cur.execute(select_student)
-        rows = cur.fetchall()
-        disconnect_database(cur, con)
-        for row in rows:
-            l.append({"rollno": row[0], "name": row[1], "age": row[2], "branch": row[3]})
-        return {"students": l}, 200
+    token = request.headers.get('Authorization')
+    jwt_response = jwt_required(token)
+    if (type(jwt_response) is tuple):
+        res = fetch_allStudents_db()
+        return res
     else:
-        return {"message": "authentication failed"}, 401
+        return {"authentication": jwt_response}, 401
+
+
+
 
 

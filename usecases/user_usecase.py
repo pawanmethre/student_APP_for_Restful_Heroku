@@ -1,56 +1,49 @@
+import time
 import sys
 import jwt
 import bcrypt
-from flask import request
+from flask_restful import reqparse
 secret_key = "secret108"
 sys.path.append('/home/pawan/PycharmProjects/StudentApp')
-from data_providers.db_operations import connect_database
-from data_providers.db_operations import disconnect_database
+from data_providers.db_operations import connect_database, disconnect_database, register_user, valid_user
 
 
-# user registration
-def valid_user(username, password):
-    cur, con = connect_database('student')
-    select_valid_user = "SELECT * FROM users WHERE username = %s"
-    cur.execute(select_valid_user, (username,))
-    row = cur.fetchone()
-    disconnect_database(cur, con)
+def validate_user_credentials():
+    parser = reqparse.RequestParser(bundle_errors=True)
+    parser.add_argument("username", type=str, required=True, help="username required!")
+    parser.add_argument("password", type=str, required=True, help="password required!")
+    parser.add_argument("email", type=str, required=True, help="email required!")
+    parser.add_argument("role", type=str, required=True, help="role required!")
+    args = parser.parse_args()
 
-    if row:
-        # if username is matching the authenticate password
-        byte_password = password.encode('UTF-8')
-        byte_db_password = row[1].encode('UTF-8')
-        user = bcrypt.checkpw(byte_password, byte_db_password)
-        return user
-    else:
-        user = False
-        return user
+    return args
 
 
 # sign in by the existing user
-def signin(data):
-    usr = valid_user(data['username'], data['password'])
+def signin():
+
+    args = validate_user_credentials()
+
+    usr = valid_user(args['username'], args['password'])
     if (usr):
-        byte_token = jwt.encode({"username": data['username'], "email": data['email'], "role": data['role']},
-                                secret_key, algorithm='HS256')
+        # jwt expiry time set to 2 minute post authentication using time.time()+120
+        byte_token = jwt.encode({"username": args['username'], "email": args['email'], "role": args['role'], 'exp': time.time()+120}, secret_key, algorithm='HS256')
         string_token = byte_token.decode('UTF-8')
         return {"token": string_token}
     else:
         return {"message": "invalid credentials"}
 
 
-def register(data):
-    data = request.get_json()
-    cur, con = connect_database('student')
-    insert_user = "INSERT INTO users(username, password, email, role) VALUES(%s, %s, %s, %s)"
+def register():
+
+    args = validate_user_credentials()
+
     # passwords should not be stored as plain text in the database hence bcrypting(hashing) using some random salt
     # converting password to byte type since bcrypt accept byte type data
-    byte_password = data["password"].encode('UTF-8')
+    byte_password = args["password"].encode('UTF-8')
     hashed_byte_password = bcrypt.hashpw(byte_password, bcrypt.gensalt())
     # converting password to hashed string type to store in database
     hashed_string_password = hashed_byte_password.decode('UTF-8')
-    values = (data['username'], hashed_string_password, data['email'], data['role'])
-
-    cur.execute(insert_user, values)
-    disconnect_database(cur, con)
-    return {"message": "user added successfully"}, 201
+    data = (args['username'], hashed_string_password, args['email'], args['role'])
+    res = register_user(data)
+    return res
